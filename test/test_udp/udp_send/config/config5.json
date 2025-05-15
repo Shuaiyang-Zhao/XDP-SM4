@@ -1,0 +1,8 @@
+{
+  "dest_ip": "192.168.58.128",
+  "dest_port": 1234,
+  "local_port": 1233,
+  "thread_num": 1,
+  "max_packet_num": 100000000,
+  "debug": true
+}

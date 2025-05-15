@@ -1,0 +1,1644 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>基于XDP的SM4加解密系统</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.0/dist/chart.min.js"></script>
+    <link rel="stylesheet" href="../static/style.css">
+</head>
+
+<body class="relative">
+    <canvas id="matrix-canvas"></canvas>
+    <div id="particles-js"></div>
+    <div class="hex-grid"></div>
+
+    <div class="container mx-auto px-4 pt-10">
+        <div class="text-center mb-10">
+            <h1 class="system-title mb-4">基于XDP的SM4加解密系统</h1>
+            <div class="typing-effect blinking-cursor inline-block text-sm md:text-base text-accent-blue">
+                <span class="text-accent-blue">系统初始化完成... 安全通道已建立... 加密模块已激活...</span>
+            </div>
+        </div>
+
+        <!-- 控制面板区域 -->
+        <div class="control-panel mb-10">
+            <div class="flex flex-wrap justify-between items-center">
+                <div class="flex flex-wrap items-center gap-4 mb-2 md:mb-0">
+                    <button id="startTransmission" class="btn btn-start">
+                        开始传输
+                    </button>
+                    <button id="stopTransmission" class="btn btn-stop">
+                        停止传输
+                    </button>
+                    <div class="flex flex-col">
+                        <label class="text-sm text-accent-blue mb-1">传输速度调节</label>
+                        <input id="speedControl" type="range" min="1" max="10" value="5" class="speed-slider w-32">
+                    </div>
+                </div>
+                <div class="flex-grow mx-4 my-2 md:my-0">
+                    <div class="flex flex-wrap items-center">
+                        <label for="controlPlaintext"
+                            class="text-sm text-accent-blue mr-2 whitespace-nowrap">明文输入:</label>
+                        <input id="controlPlaintext" type="text" placeholder="输入要发送的信息..."
+                            class="control-input flex-grow" value="Hello XDP-SM4 !!!  ">
+                    </div>
+                </div>
+                <div class="flex items-center">
+                    <div class="text-center">
+                        <span class="text-sm text-accent-blue block mb-1">系统状态</span>
+                        <div class="flex items-center">
+                            <span id="systemStatus" class="status-indicator status-inactive"></span>
+                            <span id="statusText" class="text-accent-blue">就绪</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 主要模块区域 -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+            <!-- 发送方模块 -->
+            <div class="col-span-1">
+                <div class="panel h-full module p-4">
+                    <div class="component-icon sender-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#00f7ff"
+                            stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="w-full h-full">
+                            <rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect>
+                            <rect x="9" y="9" width="6" height="6"></rect>
+                            <line x1="9" y1="1" x2="9" y2="4"></line>
+                            <line x1="15" y1="1" x2="15" y2="4"></line>
+                            <line x1="9" y1="20" x2="9" y2="23"></line>
+                            <line x1="15" y1="20" x2="15" y2="23"></line>
+                            <line x1="20" y1="9" x2="23" y2="9"></line>
+                            <line x1="20" y1="14" x2="23" y2="14"></line>
+                            <line x1="1" y1="9" x2="4" y2="9"></line>
+                            <line x1="1" y1="14" x2="4" y2="14"></line>
+                        </svg>
+                    </div>
+                    <h2 class="panel-title text-center">发送方</h2>
+                    <div class="mb-4">
+                        <label class="block text-sm mb-2 text-accent-blue">待发送的数据:</label>
+                        <textarea id="sender-input" class="hex-input w-full" rows="4"
+                            placeholder="请输入要发送的信息..."></textarea>
+                    </div>
+                    <button id="send-btn" class="btn w-full mb-4">发送数据包</button>
+                    <div class="text-sm">
+                        <p class="mb-2">发送状态: <span id="sender-status" class="text-accent-blue">就绪</span></p>
+                        <p>发送包数: <span id="packet-count" class="text-accent-blue">0</span></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SM4加密服务器模块 -->
+            <div class="col-span-1">
+                <div class="panel encrypt-panel h-full">
+                    <div class="component-icon encrypt-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#cc00ff"
+                            stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="w-full h-full">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                            <line x1="12" y1="15" x2="12" y2="19"></line>
+                        </svg>
+                    </div>
+                    <h2 class="panel-title text-center">SM4加密服务器</h2>
+                    <div class="mb-3">
+                        <p class="text-sm mb-1">接收到的明文:</p>
+                        <div id="encrypt-input" class="terminal"></div>
+                    </div>
+                    <div class="mb-3">
+                        <p class="text-sm mb-1">加密后的密文:</p>
+                        <div id="encrypt-output" class="terminal"></div>
+                    </div>
+                    <div class="text-sm mb-2">
+                        <p>加密参数:</p>
+                        <div class="flex flex-wrap mt-1">
+                            <span class="key-param">ECB模式</span>
+                            <span class="key-param">PKCS7填充</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SM4解密服务器模块 -->
+            <div class="col-span-1">
+                <div class="panel decrypt-panel h-full ">
+                    <div class="component-icon decrypt-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#00ff9d"
+                            stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="w-full h-full">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                            <rect x="7" y="11" width="10" height="6" rx="1" ry="1"></rect>
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                        </svg>
+                    </div>
+                    <h2 class="panel-title text-center">SM4解密服务器</h2>
+                    <div class="mb-3">
+                        <p class="text-sm mb-1">接收到的密文:</p>
+                        <div id="decrypt-input" class="terminal"></div>
+                    </div>
+                    <div class="mb-3">
+                        <p class="text-sm mb-1">解密后的明文:</p>
+                        <div id="decrypt-output" class="terminal"></div>
+                    </div>
+                    <div class="text-sm mb-2">
+                        <p>解密参数:</p>
+                        <div class="flex flex-wrap mt-1">
+                            <span class="key-param">ECB模式</span>
+                            <span class="key-param">PKCS7填充</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 接收方模块 -->
+            <div class="col-span-1">
+                <div class="panel h-full">
+                    <div class="component-icon receiver-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#00f7ff"
+                            stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="w-full h-full">
+                            <rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect>
+                            <rect x="9" y="9" width="6" height="6"></rect>
+                            <path d="M15 2H9"></path>
+                            <path d="M15 22H9"></path>
+                            <path d="M2 15V9"></path>
+                            <path d="M22 15V9"></path>
+                        </svg>
+                    </div>
+                    <h2 class="panel-title text-center">接收方</h2>
+                    <div class="mb-4">
+                        <p class="text-sm mb-1">接收到的数据:</p>
+                        <div id="receiver-output" class="terminal"></div>
+                    </div>
+                    <div class="text-sm">
+                        <p class="mb-2">接收状态: <span id="receiver-status" class="text-accent-blue">等待数据</span></p>
+                        <p>接收包数: <span id="received-count" class="text-accent-blue">0</span></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 密钥分发可视化模块 -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
+            <div class="data-flow" id="flow-1"></div>
+            <div class="data-flow data-flow-encrypt" id="flow-2"></div>
+            <div class="data-flow data-flow-decrypt" id="flow-3"></div>
+            <div class="data-flow" id="flow-4"></div>
+        </div>
+        <div class="visualization-module mb-10">
+            <h2 class="panel-title text-xl text-center mb-6">密钥分发可视化</h2>
+
+            <div class="key-distribution-container" id="key-distribution-container">
+                <div class="security-domain">
+                    <!-- KMS服务器 -->
+                    <div class="kms-node">
+                        <div class="server-box kms-server">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#ffcc00"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="28" height="28">
+                                <path
+                                    d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4">
+                                </path>
+                            </svg>
+                        </div>
+                        <div class="server-label">KMS</div>
+                    </div>
+
+                    <!-- 加密服务器 -->
+                    <div class="encrypt-node">
+                        <div class="server-box encrypt-server">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#cc00ff"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="28" height="28">
+                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                            </svg>
+                        </div>
+                        <div class="server-label">加密服务器</div>
+                    </div>
+
+                    <!-- 解密服务器 -->
+                    <div class="decrypt-node">
+                        <div class="server-box decrypt-server">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#00ff9d"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="28" height="28">
+                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                <rect x="7" y="11" width="10" height="6" rx="1" ry="1"></rect>
+                                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                            </svg>
+                        </div>
+                        <div class="server-label">解密服务器</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 数据包可视化模块 -->
+        <div class="visualization-module mb-10">
+            <h2 class=" text-xl panel-title text-center mb-6">数据包可视化</h2>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- 左侧安全域（发送方和加密服务器） -->
+                <div class="security-domain" id="domain-sender">
+                    <div class="domain-label">安全域 A （发送方 & 加密服务器）</div>
+                    <!-- 发送方 -->
+                    <div class="node" style="top: 50%; left: 25%;">
+                        <div class="node-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#00f7ff"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-7 h-7">
+                                <rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect>
+                                <rect x="9" y="9" width="6" height="6"></rect>
+                            </svg>
+                        </div>
+                        <div class="node-label">发送方</div>
+                    </div>
+                    <!-- 加密服务器 -->
+                    <div class="node" style="top: 50%; left: 75%;">
+                        <div class="node-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#cc00ff"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-7 h-7">
+                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                            </svg>
+                        </div>
+                        <div class="node-label">加密服务器</div>
+                    </div>
+                    <!-- 传输线路 -->
+                    <div class="transmission-path" style="left: 25%; width: 50%;"></div>
+                </div>
+
+                <!-- 右侧安全域（解密服务器和接收方） -->
+                <div class="security-domain" id="domain-receiver">
+                    <div class="domain-label">安全域 B （解密服务器 & 接收方）</div>
+                    <!-- 解密服务器 -->
+                    <div class="node" style="top: 50%; left: 25%;">
+                        <div class="node-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#00ff9d"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-7 h-7">
+                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                <rect x="7" y="11" width="10" height="6" rx="1" ry="1"></rect>
+                                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                            </svg>
+                        </div>
+                        <div class="node-label">解密服务器</div>
+                    </div>
+                    <!-- 接收方 -->
+                    <div class="node" style="top: 50%; left: 75%;">
+                        <div class="node-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#00f7ff"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-7 h-7">
+                                <rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect>
+                                <rect x="9" y="9" width="6" height="6"></rect>
+                            </svg>
+                        </div>
+                        <div class="node-label">接收方</div>
+                    </div>
+                    <!-- 传输线路 -->
+                    <div class="transmission-path" style="left: 25%; width: 50%;"></div>
+                </div>
+
+                <!-- 连接网关 -->
+                <div class="domain-gateway">
+                    <div class="gateway-circle"></div>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#00f7ff"
+                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-8 h-8">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="2" y1="12" x2="22" y2="12"></line>
+                        <path
+                            d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z">
+                        </path>
+                    </svg>
+                </div>
+            </div>
+
+            <!-- 传输统计 -->
+            <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mt-6">
+                <div class="stat-card">
+                    <div class="text-xs text-center mb-1">总数据包</div>
+                    <div id="viz-total-packets" class="text-center stat-value">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="text-xs text-center mb-1">明文数据包</div>
+                    <div id="viz-plaintext-packets" class="text-center stat-value" style="color: var(--accent-blue);">0
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="text-xs text-center mb-1">加密数据包</div>
+                    <div id="viz-encrypted-packets" class="text-center stat-value" style="color: var(--accent-purple);">
+                        0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="text-xs text-center mb-1">解密数据包</div>
+                    <div id="viz-decrypted-packets" class="text-center stat-value" style="color: var(--accent-green);">0
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="text-xs text-center mb-1">传输成功率</div>
+                    <div id="viz-success-rate" class="text-center stat-value">100%</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 系统性能指标 -->
+        <div class="performance-module mb-10">
+            <h2 class="text-xl text-accent-blue font-bold  panel-title mb-6 text-center">系统性能指标</h2>
+
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <div class="metric-card p-4">
+                    <h3 class="metric-title">系统吞吐率</h3>
+                    <div class="metric-value" id="throughput-value">0</div>
+                    <div class="metric-unit">Kbps</div> 
+                    <div class="progress-container">
+                        <div class="progress-bar-blue" id="throughput-bar" style="width: 0%;"></div>
+                    </div>
+                </div>
+
+                <!-- 端到端延迟 -->
+                <div class="metric-card p-4">
+                    <h3 class="metric-title">端到端延迟</h3>
+                    <div class="metric-value" id="latency-value">0</div>
+                    <div class="metric-unit">ms</div>
+                    <div class="flex justify-between text-xs text-accent-blue mt-2">
+                        <span>最小: <span id="min-latency">0</span> ms</span>
+                        <span>平均: <span id="avg-latency">0</span> ms</span>
+                        <span>最大: <span id="max-latency">0</span> ms</span>
+                    </div>
+                </div>
+
+                <!-- 加密处理时间 -->
+                <div class="metric-card p-4">
+                    <h3 class="metric-title">加密处理时间</h3>
+                    <div class="metric-value" id="encrypt-time">0</div>
+                    <div class="metric-unit">ms</div>
+                    <div class="progress-container">
+                        <div class="progress-bar-purple" id="encrypt-time-bar" style="width: 0%;"></div>
+                    </div>
+                </div>
+
+                <!-- 解密处理时间 -->
+                <div class="metric-card p-4">
+                    <h3 class="metric-title">解密处理时间</h3>
+                    <div class="metric-value" id="decrypt-time">0</div>
+                    <div class="metric-unit">ms</div>
+                    <div class="progress-container">
+                        <div class="progress-bar-green" id="decrypt-time-bar" style="width: 0%;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+                <div class="bg-black bg-opacity-30 p-4 rounded-lg border border-accent-blue">
+                    <h3 class="text-center text-accent-blue mb-4">性能监控</h3>
+
+                    <div class="flex justify-between text-sm text-accent-blue mb-4">
+                        <span>安全强度评估: <span id="security-strength" class="text-accent-green">0</span></span>
+                        <span>吞吐率波动: <span id="throughput-fluctuation" class="text-accent-purple">0</span></span>
+                    </div>
+
+                    <div class="chart-container">
+                        <canvas id="performance-chart"></canvas>
+                    </div>
+                </div>
+
+
+                <!-- 系统资源使用率 -->
+                <div class="bg-black bg-opacity-30 p-4 rounded-lg border border-accent-blue">
+                    <h3 class="text-center text-accent-blue mb-4">系统资源</h3>
+
+                    <!-- 服务器选择控件 -->
+                    <div class="flex justify-center space-x-8 mb-4">
+                        <label class="inline-flex items-center mr-4">
+                            <input type="radio" name="server-selection" value="encrypt" checked
+                                class="form-radio text-accent-purple">
+                            <span class="ml-2 text-sm text-accent-purple">加密服务器</span>
+                        </label>
+                        <label class="inline-flex items-center">
+                            <input type="radio" name="server-selection" value="decrypt"
+                                class="form-radio text-accent-green">
+                            <span class="ml-2 text-sm text-accent-green">解密服务器</span>
+                        </label>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <!-- CPU 使用率 -->
+                        <div>
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="text-sm text-accent-blue">CPU 使用率</span>
+                                <span id="cpu-usage" class="text-sm text-accent-blue">0%</span>
+                            </div>
+                            <div class="progress-container">
+                                <div id="cpu-bar" class="progress-bar-blue" style="width: 0%;"></div>
+                            </div>
+                        </div>
+
+                        <!-- 内存使用率 -->
+                        <div>
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="text-sm text-accent-blue">内存使用率</span>
+                                <span id="memory-usage" class="text-sm text-accent-blue">0%</span>
+                            </div>
+                            <div class="progress-container">
+                                <div id="memory-bar" class="progress-bar-blue" style="width: 0%;"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="chart-container">
+                        <canvas id="resource-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SM4 算法信息 -->
+        <div class="panel mb-10">
+            <h2 class="text-xl panel-title  text-center mb-4">SM4算法简介</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <p class="text-sm mb-4">SM4是中国国家密码管理局发布的分组密码算法，属于对称加密算法，用于替代DES和AES等传统算法。<br>
+                        SM4算法的分组长度和密钥长度均为128比特。</p>
+
+                    <p class="text-sm mb-4">基于XDP的SM4加密实现是在Linux内核中利用eBPF技术，实现了高性能的数据包加解密处理。<br>
+                        XDP（eXpress DataPath）允许在网络栈的早期阶段处理数据包，大大提高处理效率。</p>
+                </div>
+                <div>
+                    <p class="text-sm mb-4">SM4加密过程包括32轮迭代，每轮包含非线性变换和线性变换，并使用轮密钥进行异或操作。<br>
+                        SM4算法具有高安全性和效率，被广泛应用于中国的信息安全领域。
+                    </p>
+
+                    <p class="text-sm">本系统使用ECB模式进行加密，采用PKCS7填充方式，可以处理所有类型的数据。<br>
+                        密钥由可信第三方分发。</p>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- 二进制数动画 -->
+        <div id="binary-container" class="fixed inset-0 pointer-events-none z-0 overflow-hidden"></div>
+
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                // 全局变量与设置
+                let selectedServer = 'encrypt'; 
+                let latestPerformanceData = null; 
+                let transmissionInterval = null;
+                let transmissionSpeed = 5; 
+                let isFirstTransmission = true;
+                let hasCommunicationFailed = false;
+                let pendingAnimations = 0;
+                let packetCounter = {
+                    total: 0,
+                    plaintext: 0,
+                    encrypted: 0,
+                    decrypted: 0,
+                    success: 0
+                };
+
+                const keyDistributionContainer = document.getElementById('key-distribution-container');
+                const encryptKeyIndicator = document.getElementById('encrypt-key-indicator');
+                const decryptKeyIndicator = document.getElementById('decrypt-key-indicator');
+
+                // 服务器选择事件监听
+                const serverRadios = document.querySelectorAll('input[name="server-selection"]');
+                serverRadios.forEach(radio => {
+                    radio.addEventListener('change', function () {
+                        selectedServer = this.value; // 更新选中的服务器
+                        updateServerResourceDisplay(); // 更新显示
+                    });
+                });
+
+                // 确保默认选中加密服务器
+                document.querySelector('input[value="encrypt"]').checked = true;
+
+                // 更新服务器资源显示
+                function updateServerResourceDisplay() {
+                    if (!latestPerformanceData || !latestPerformanceData.system) return;
+
+                    const data = latestPerformanceData.system;
+                    const cpuUsage = document.getElementById('cpu-usage');
+                    const cpuBar = document.getElementById('cpu-bar');
+                    const memoryUsage = document.getElementById('memory-usage');
+                    const memoryBar = document.getElementById('memory-bar');
+
+                    if (selectedServer === 'encrypt') {
+                        // 显示加密服务器数据
+                        if (data.encrypt_cpu_usage && data.encrypt_cpu_usage.length > 0) {
+                            const newCpuUsage = Math.floor(data.encrypt_cpu_usage[data.encrypt_cpu_usage.length - 1]);
+                            cpuUsage.textContent = `${newCpuUsage}%`;
+                            cpuBar.style.width = `${newCpuUsage}%`;
+                        } else {
+                            cpuUsage.textContent = "0%";
+                            cpuBar.style.width = "0%";
+                        }
+
+                        if (data.encrypt_memory_usage && data.encrypt_memory_usage.length > 0) {
+                            const newMemoryUsage = Math.floor(data.encrypt_memory_usage[data.encrypt_memory_usage.length - 1]);
+                            memoryUsage.textContent = `${newMemoryUsage}%`;
+                            memoryBar.style.width = `${newMemoryUsage}%`;
+                        } else {
+                            memoryUsage.textContent = "0%";
+                            memoryBar.style.width = "0%";
+                        }
+
+                        // 更新图表数据
+                        if (window.resourceChart) {
+                            window.resourceChart.data.datasets[0].data = data.encrypt_cpu_usage || [];
+                            window.resourceChart.data.datasets[1].data = data.encrypt_memory_usage || [];
+                            window.resourceChart.data.datasets[0].label = '加密服务器 CPU 使用率';
+                            window.resourceChart.data.datasets[1].label = '加密服务器内存使用率';
+                            window.resourceChart.data.datasets[0].borderColor = '#cc00ff'; // 紫色
+                            window.resourceChart.data.datasets[0].backgroundColor = 'rgba(204, 0, 255, 0.1)';
+                            window.resourceChart.update();
+                        }
+                    } else {
+                        // 显示解密服务器数据
+                        if (data.decrypt_cpu_usage && data.decrypt_cpu_usage.length > 0) {
+                            const newCpuUsage = Math.floor(data.decrypt_cpu_usage[data.decrypt_cpu_usage.length - 1]);
+                            cpuUsage.textContent = `${newCpuUsage}%`;
+                            cpuBar.style.width = `${newCpuUsage}%`;
+                        } else {
+                            cpuUsage.textContent = "0%";
+                            cpuBar.style.width = "0%";
+                        }
+
+                        if (data.decrypt_memory_usage && data.decrypt_memory_usage.length > 0) {
+                            const newMemoryUsage = Math.floor(data.decrypt_memory_usage[data.decrypt_memory_usage.length - 1]);
+                            memoryUsage.textContent = `${newMemoryUsage}%`;
+                            memoryBar.style.width = `${newMemoryUsage}%`;
+                        } else {
+                            memoryUsage.textContent = "0%";
+                            memoryBar.style.width = "0%";
+                        }
+
+                        // 更新图表数据
+                        if (window.resourceChart) {
+                            window.resourceChart.data.datasets[0].data = data.decrypt_cpu_usage || [];
+                            window.resourceChart.data.datasets[1].data = data.decrypt_memory_usage || [];
+                            window.resourceChart.data.datasets[0].label = '解密服务器 CPU 使用率';
+                            window.resourceChart.data.datasets[1].label = '解密服务器内存使用率';
+                            window.resourceChart.data.datasets[0].borderColor = '#00ff9d'; // 绿色
+                            window.resourceChart.data.datasets[0].backgroundColor = 'rgba(0, 255, 157, 0.1)';
+                            window.resourceChart.update();
+                        }
+                    }
+                }
+
+                // 密钥分发动画
+                function distributeKey() {
+                    // 创建两个密钥包，分别发往加密和解密服务器
+                    const keyPacketLeft = document.createElement('div');
+                    keyPacketLeft.className = 'key-packet';
+                    keyPacketLeft.style.display = 'block';
+                    keyPacketLeft.style.left = '50%';
+                    keyPacketLeft.style.top = '55px';
+                    keyDistributionContainer.appendChild(keyPacketLeft);
+
+                    const keyPacketRight = document.createElement('div');
+                    keyPacketRight.className = 'key-packet';
+                    keyPacketRight.style.display = 'block';
+                    keyPacketRight.style.left = '50%';
+                    keyPacketRight.style.top = '55px';
+                    keyDistributionContainer.appendChild(keyPacketRight);
+
+                    // 动画：密钥从KMS到加密服务器（左侧）
+                    setTimeout(() => {
+                        keyPacketLeft.style.transition = 'all 1s ease-in-out';
+                        keyPacketLeft.style.left = '25%';
+                        keyPacketLeft.style.top = '120px';
+
+                        // 当左侧密钥到达时
+                        setTimeout(() => {
+                            keyPacketLeft.remove();
+                        }, 1000);
+                    }, 100);
+
+                    // 动画：密钥从KMS到解密服务器（右侧）
+                    setTimeout(() => {
+                        keyPacketRight.style.transition = 'all 1s ease-in-out';
+                        keyPacketRight.style.left = '75%';
+                        keyPacketRight.style.top = '120px';
+
+                        // 当右侧密钥到达时
+                        setTimeout(() => {
+                            keyPacketRight.remove();
+                        }, 1000);
+                    }, 100);
+                }
+
+                // 页面加载后立即开始密钥分发
+                distributeKey();
+
+                // 设置3秒定时执行，持续分发密钥
+                setInterval(distributeKey, 3000);
+
+                // Matrix Digital Rain Effect
+                const canvas = document.getElementById('matrix-canvas');
+                const ctx = canvas.getContext('2d');
+                let width = canvas.width = window.innerWidth;
+                let height = canvas.height = window.innerHeight;
+                const columns = Math.floor(width / 20);
+                const drops = [];
+                for (let i = 0; i < columns; i++) {
+                    drops[i] = Math.floor(Math.random() * -100);
+                }
+                const matrix = () => {
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.04)';
+                    ctx.fillRect(0, 0, width, height);
+
+                    ctx.fillStyle = '#00f7ff';
+                    ctx.font = '15px monospace';
+
+                    for (let i = 0; i < drops.length; i++) {
+                        const text = Math.floor(Math.random() * 16).toString(16);
+                        ctx.fillText(text, i * 20, drops[i] * 20);
+
+                        if (drops[i] * 20 > height && Math.random() > 0.975) {
+                            drops[i] = 0;
+                        }
+
+                        drops[i]++;
+                    }
+                };
+
+                window.addEventListener('resize', () => {
+                    width = canvas.width = window.innerWidth;
+                    height = canvas.height = window.innerHeight;
+                });
+                setInterval(matrix, 50);
+
+                // Typing effect
+                const typingElements = document.querySelectorAll('.typing-effect');
+                typingElements.forEach(element => {
+                    const text = element.textContent;
+                    element.textContent = '';
+                    let i = 0;
+
+                    function typeWriter() {
+                        if (i < text.length) {
+                            element.textContent += text.charAt(i);
+                            i++;
+                            setTimeout(typeWriter, 5);
+                        }
+                    }
+
+                    typeWriter();
+                });
+
+                // Binary bits floating animation
+                const binaryContainer = document.getElementById('binary-container');
+
+                for (let i = 0; i < 50; i++) {
+                    const bit = document.createElement('div');
+                    bit.classList.add('binary-bits');
+                    bit.style.left = `${Math.random() * 100}%`;
+                    bit.style.top = `${Math.random() * 100}%`;
+                    bit.style.opacity = Math.random() * 0.5 + 0.1;
+                    bit.textContent = Math.random() > 0.5 ? '1' : '0';
+
+                    binaryContainer.appendChild(bit);
+
+                    animateBit(bit);
+                }
+
+                function animateBit(bit) {
+                    const speed = 1 + Math.random() * 3;
+                    let posY = parseFloat(bit.style.top);
+
+                    function move() {
+                        posY -= speed / 10;
+                        if (posY < -5) {
+                            posY = 105;
+                            bit.style.left = `${Math.random() * 100}%`;
+                        }
+                        bit.style.top = `${posY}%`;
+                        requestAnimationFrame(move);
+                    }
+
+                    move();
+                }
+
+                // Data flow animation
+                const flows = document.querySelectorAll('.data-flow');
+
+                flows.forEach(flow => {
+                    setInterval(() => {
+                        const pulse = document.createElement('div');
+                        pulse.style.cssText = `
+            position: absolute;
+            left: 0;
+            top: 0;
+            height: 100%;
+            width: 50%;
+            background: rgba(255, 255, 255, 0.8);
+            filter: blur(4px);
+            animation: flowAnimation 2s linear forwards;
+        `;
+                        flow.appendChild(pulse);
+                        setTimeout(() => {
+                            pulse.remove();
+                        }, 2000);
+                    }, 3000);
+                });
+
+                // Particle.js initialization
+                particlesJS('particles-js', {
+                    particles: {
+                        number: {
+                            value: 80,
+                            density: {
+                                enable: true,
+                                value_area: 800
+                            }
+                        },
+                        color: {
+                            value: '#00f7ff'
+                        },
+                        shape: {
+                            type: 'circle',
+                            stroke: {
+                                width: 0,
+                                color: '#000000'
+                            },
+                            polygon: {
+                                nb_sides: 5
+                            }
+                        },
+                        opacity: {
+                            value: 0.5,
+                            random: true,
+                            anim: {
+                                enable: true,
+                                speed: 1,
+                                opacity_min: 0.1,
+                                sync: false
+                            }
+                        },
+                        size: {
+                            value: 3,
+                            random: true,
+                            anim: {
+                                enable: false,
+                                speed: 40,
+                                size_min: 0.1,
+                                sync: false
+                            }
+                        },
+                        line_linked: {
+                            enable: true,
+                            distance: 150,
+                            color: '#00f7ff',
+                            opacity: 0.4,
+                            width: 1
+                        },
+                        move: {
+                            enable: true,
+                            speed: 2,
+                            direction: 'none',
+                            random: false,
+                            straight: false,
+                            out_mode: 'out',
+                            bounce: false,
+                            attract: {
+                                enable: false,
+                                rotateX: 600,
+                                rotateY: 1200
+                            }
+                        }
+                    },
+                    interactivity: {
+                        detect_on: 'canvas',
+                        events: {
+                            onhover: {
+                                enable: true,
+                                mode: 'grab'
+                            },
+                            onclick: {
+                                enable: true,
+                                mode: 'push'
+                            },
+                            resize: true
+                        },
+                        modes: {
+                            grab: {
+                                distance: 140,
+                                line_linked: {
+                                    opacity: 1
+                                }
+                            },
+                            bubble: {
+                                distance: 400,
+                                size: 40,
+                                duration: 2,
+                                opacity: 8,
+                                speed: 3
+                            },
+                            repulse: {
+                                distance: 200,
+                                duration: 0.4
+                            },
+                            push: {
+                                particles_nb: 4
+                            },
+                            remove: {
+                                particles_nb: 2
+                            }
+                        }
+                    },
+                    retina_detect: true
+                });
+
+                // SM4 Encryption Simulation
+                const sendBtn = document.getElementById('send-btn');
+                const senderInput = document.getElementById('sender-input');
+                const encryptInput = document.getElementById('encrypt-input');
+                const encryptOutput = document.getElementById('encrypt-output');
+                const decryptInput = document.getElementById('decrypt-input');
+                const decryptOutput = document.getElementById('decrypt-output');
+                const receiverOutput = document.getElementById('receiver-output');
+                const senderStatus = document.getElementById('sender-status');
+                const receiverStatus = document.getElementById('receiver-status');
+                const packetCount = document.getElementById('packet-count');
+                const receivedCount = document.getElementById('received-count');
+
+                // 重置所有状态
+                function resetAllCounters() {
+                    // 重置数据包计数器
+                    packetCounter.total = 0;
+                    packetCounter.plaintext = 0;
+                    packetCounter.encrypted = 0;
+                    packetCounter.decrypted = 0;
+                    packetCounter.success = 0;
+
+                    // 重置UI计数器
+                    document.getElementById('viz-total-packets').textContent = '0';
+                    document.getElementById('viz-plaintext-packets').textContent = '0';
+                    document.getElementById('viz-encrypted-packets').textContent = '0';
+                    document.getElementById('viz-decrypted-packets').textContent = '0';
+                    document.getElementById('viz-success-rate').textContent = '100%';
+
+                    // 重置发送/接收计数
+                    packetCount.textContent = '0';
+                    receivedCount.textContent = '0';
+
+                    // 清空所有终端显示
+                    encryptInput.textContent = '';
+                    encryptOutput.textContent = '';
+                    decryptInput.textContent = '';
+                    decryptOutput.textContent = '';
+                    receiverOutput.textContent = '';
+
+                    // 重置状态文本
+                    senderStatus.textContent = '就绪';
+                    receiverStatus.textContent = '等待数据';
+
+                    // 重置性能指标显示
+                    document.getElementById('throughput-value').textContent = '0';
+                    document.getElementById('latency-value').textContent = '0';
+                    document.getElementById('min-latency').textContent = '0';
+                    document.getElementById('avg-latency').textContent = '0';
+                    document.getElementById('max-latency').textContent = '0';
+                    document.getElementById('encrypt-time').textContent = '0';
+                    document.getElementById('decrypt-time').textContent = '0';
+                    document.getElementById('cpu-usage').textContent = '0%';
+                    document.getElementById('memory-usage').textContent = '0%';
+                    document.getElementById('security-strength').textContent = 'N/A';
+                    document.getElementById('throughput-fluctuation').textContent = 'N/A';
+
+                    // 重置进度条
+                    document.getElementById('throughput-bar').style.width = '0%';
+                    document.getElementById('encrypt-time-bar').style.width = '0%';
+                    document.getElementById('decrypt-time-bar').style.width = '0%';
+                    document.getElementById('cpu-bar').style.width = '0%';
+                    document.getElementById('memory-bar').style.width = '0%';
+
+                    // 重置图表
+                    if (window.resourceChart) {
+                        window.resourceChart.data.datasets[0].data = [];
+                        window.resourceChart.data.datasets[1].data = [];
+                        window.resourceChart.update();
+                    }
+
+                    if (window.performanceChart) {
+                        window.performanceChart.data.datasets[0].data = [];
+                        window.performanceChart.data.datasets[1].data = [];
+                        window.performanceChart.update();
+                    }
+
+                    // 重置服务器选择
+                    selectedServer = 'encrypt';
+                    document.querySelector('input[value="encrypt"]').checked = true;
+
+                    // 重置保存的性能数据
+                    latestPerformanceData = null;
+
+                    console.log("所有状态已重置");
+                }
+
+                // Typed animation for terminal output
+                function typedOutput(element, text, callback) {
+                    element.textContent = '';
+                    let i = 0;
+
+                    function typeChar() {
+                        if (i < text.length) {
+                            element.textContent += text.charAt(i);
+                            i++;
+                            setTimeout(typeChar, 5);
+                        } else if (callback) {
+                            setTimeout(callback, 100);
+                        }
+                    }
+
+                    typeChar();
+                }
+
+                function activateDataFlows() {
+                    const flows = document.querySelectorAll('.data-flow');
+
+                    flows.forEach((flow, index) => {
+                        setTimeout(() => {
+                            const pulse = document.createElement('div');
+                            pulse.style.cssText = `
+                position: absolute;
+                left: 0;
+                top: 0;
+                height: 100%;
+                width: 50%;
+                background: rgba(255, 255, 255, 0.8);
+                filter: blur(4px);
+                animation: flowAnimation 2s linear forwards;
+            `;
+                            flow.appendChild(pulse);
+                            setTimeout(() => {
+                                pulse.remove();
+                            }, 2000);
+                        }, index * 800); // 错开时间，形成流动效果
+                    });
+                }
+
+                // 处理单个数据包发送
+                sendBtn.addEventListener('click', () => {
+                    const hexInput = senderInput.value.trim();
+
+                    // Update sender status
+                    senderStatus.textContent = '发送中...';
+
+                    // 向后端发送请求
+                    fetch('/encrypt', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ plaintext: hexInput })
+                    })
+                        .then(response => {
+                            if (!response.ok) {
+                                return response.json().then(err => {
+                                    throw new Error(err.error || '请求失败');
+                                });
+                            }
+                            return response.json();
+                        })
+                        .then(data => {
+                            packetCount.textContent = (parseInt(packetCount.textContent) + 1).toString();
+
+                            // 显示加密解密结果 - 显示过程应该反映实际的数据流动
+                            typedOutput(encryptInput, hexInput, () => {
+                                // 更新数据包可视化 - 发送方到加密服务器的明文数据包
+                                createPlaintextPacket();
+
+                                setTimeout(() => {
+                                    typedOutput(encryptOutput, data.ciphertext, () => {
+                                        // 更新数据包可视化 - 加密后的数据包
+                                        createEncryptedPacket();
+
+                                        setTimeout(() => {
+                                            typedOutput(decryptInput, data.ciphertext, () => {
+                                                setTimeout(() => {
+                                                    typedOutput(decryptOutput, data.decrypted, () => {
+                                                        // 更新数据包可视化 - 解密后的数据包
+                                                        createDecryptedPacket();
+
+                                                        setTimeout(() => {
+                                                            typedOutput(receiverOutput, data.decrypted, () => {
+                                                                receiverStatus.textContent = '接收完成';
+                                                                receivedCount.textContent = (parseInt(receivedCount.textContent) + 1).toString();
+                                                                senderStatus.textContent = '就绪';
+                                                                setTimeout(() => {
+                                                                    receiverStatus.textContent = '等待数据';
+                                                                }, 1000);
+                                                            });
+                                                        }, 1);
+                                                    });
+                                                }, 1);
+                                            });
+                                        }, 1);
+                                    });
+                                }, 1);
+                            });
+                            activateDataFlows();
+
+                            // 立即更新性能数据
+                            updatePerformanceData();
+                        })
+                        .catch(error => {
+                            console.error('API请求失败:', error);
+                            alert('错误: ' + error.message);
+                            senderStatus.textContent = '发送失败';
+                        });
+                });
+
+                // 控制面板功能
+                const startTransmissionBtn = document.getElementById('startTransmission');
+                const stopTransmissionBtn = document.getElementById('stopTransmission');
+                const speedControl = document.getElementById('speedControl');
+                const controlPlaintext = document.getElementById('controlPlaintext');
+                const systemStatus = document.getElementById('systemStatus');
+                const statusText = document.getElementById('statusText');
+
+                // 开始传输
+                startTransmissionBtn.addEventListener('click', () => {
+                    const hexInput = controlPlaintext.value.trim();
+
+                    // 如果已经有传输在进行，先停止
+                    if (transmissionInterval) {
+                        clearInterval(transmissionInterval);
+                    }
+
+                    // 重置第一次传输标记和通信失败标记
+                    isFirstTransmission = true;
+                    hasCommunicationFailed = false;
+
+                    // 更新系统状态
+                    systemStatus.classList.remove('status-inactive');
+                    systemStatus.classList.add('status-active');
+                    statusText.textContent = '传输中';
+
+                    // 设置传输速度 (1-10转换为实际间隔2000ms-500ms)
+                    const interval = 2500 - (transmissionSpeed * 200);
+
+                    // 设置发送间隔
+                    transmissionInterval = setInterval(() => {
+                        // 如果之前有通信失败，不再继续发送
+                        if (hasCommunicationFailed) {
+                            return;
+                        }
+
+                        // 将控制面板的内容设置到发送方输入框
+                        senderInput.value = hexInput;
+
+                        // 触发发送按钮点击，但使用Promise来捕获可能的失败
+                        // 将点击事件封装在自定义函数中，以便捕获错误
+                        const attemptSend = () => {
+                            // 更新状态
+                            senderStatus.textContent = '发送中...';
+
+                            // 执行API调用
+                            return fetch('/encrypt', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({ plaintext: hexInput })
+                            })
+                                .then(response => {
+                                    if (!response.ok) {
+                                        return response.json().then(err => {
+                                            throw new Error(err.error || '请求失败');
+                                        });
+                                    }
+                                    return response.json();
+                                })
+                                .then(data => {
+                                    // 传输成功，更新第一次传输标记
+                                    isFirstTransmission = false;
+
+                                    // 更新UI和数据流动（与send-btn的函数相似）
+                                    packetCount.textContent = (parseInt(packetCount.textContent) + 1).toString();
+
+                                    // 显示加密解密结果 - 显示过程应该反映实际的数据流动
+                                    typedOutput(encryptInput, hexInput, () => {
+                                        // 更新数据包可视化 - 发送方到加密服务器的明文数据包
+                                        createPlaintextPacket();
+
+                                        setTimeout(() => {
+                                            typedOutput(encryptOutput, data.ciphertext, () => {
+                                                // 更新数据包可视化 - 加密后的数据包
+                                                createEncryptedPacket();
+
+                                                setTimeout(() => {
+                                                    typedOutput(decryptInput, data.ciphertext, () => {
+                                                        setTimeout(() => {
+                                                            typedOutput(decryptOutput, data.decrypted, () => {
+                                                                // 更新数据包可视化 - 解密后的数据包
+                                                                createDecryptedPacket();
+
+                                                                setTimeout(() => {
+                                                                    typedOutput(receiverOutput, data.decrypted, () => {
+                                                                        receiverStatus.textContent = '接收完成';
+                                                                        receivedCount.textContent = (parseInt(receivedCount.textContent) + 1).toString();
+                                                                        senderStatus.textContent = '就绪';
+                                                                        setTimeout(() => {
+                                                                            receiverStatus.textContent = '等待数据';
+                                                                        }, 1000);
+                                                                    });
+                                                                }, 1);
+                                                            });
+                                                        }, 1);
+                                                    });
+                                                }, 1);
+                                            });
+                                        }, 1);
+                                    });
+
+                                    activateDataFlows();
+                                    updatePerformanceData();
+                                });
+                        };
+
+                        // 执行发送尝试并处理错误
+                        attemptSend().catch(error => {
+                            console.error('API请求失败:', error);
+                            senderStatus.textContent = '发送失败';
+
+                            // 如果是第一次传输失败，停止整个传输过程并提示用户
+                            if (isFirstTransmission) {
+                                hasCommunicationFailed = true;
+                                clearInterval(transmissionInterval);
+                                transmissionInterval = null;
+
+                                // 更新系统状态
+                                systemStatus.classList.remove('status-active');
+                                systemStatus.classList.add('status-inactive');
+                                statusText.textContent = '就绪';
+
+                                // 弹出错误提示
+                                alert('无法获取数据，传输已自动停止: ' + error.message);
+                            }
+                        });
+                    }, interval);
+                });
+
+                // 停止传输
+                stopTransmissionBtn.addEventListener('click', () => {
+                    if (transmissionInterval) {
+                        clearInterval(transmissionInterval);
+                        transmissionInterval = null;
+
+                        // 更新系统状态
+                        systemStatus.classList.remove('status-active');
+                        systemStatus.classList.add('status-inactive');
+                        statusText.textContent = '就绪';
+
+                        // 等待所有动画完成
+                        const checkAnimations = setInterval(() => {
+                            if (pendingAnimations <= 0) {
+                                clearInterval(checkAnimations);
+                                console.log('所有数据包动画已完成');
+
+                                // 确保最终统计数据更新
+                                updateVisualizationStats();
+                            }
+                        }, 100);
+                    }
+                });
+
+                // 速度控制
+                speedControl.addEventListener('input', () => {
+                    transmissionSpeed = parseInt(speedControl.value);
+
+                    // 如果传输正在进行，更新速度
+                    if (transmissionInterval && !hasCommunicationFailed) {
+                        clearInterval(transmissionInterval);
+
+                        const interval = 2500 - (transmissionSpeed * 200);
+                        transmissionInterval = setInterval(() => {
+                            senderInput.value = controlPlaintext.value.trim();
+                            sendBtn.click();
+                        }, interval);
+                    }
+                });
+
+                // 数据包可视化相关函数 - 拆分为三个独立函数以正确反映数据流
+                function createPlaintextPacket() {
+                    // 更新计数器
+                    packetCounter.total++;
+                    packetCounter.plaintext++;
+
+                    // 更新UI显示
+                    document.getElementById('viz-total-packets').textContent = packetCounter.total;
+                    document.getElementById('viz-plaintext-packets').textContent = packetCounter.plaintext;
+
+                    // 开始新动画前增加计数
+                    pendingAnimations++;
+
+                    // 创建明文数据包 (发送方 -> 加密服务器)
+                    createPacket('domain-sender', 'packet-plaintext', 25, 75, () => {
+                        // 明文包动画完成
+                        console.log("明文数据包动画完成");
+                    });
+                }
+
+                function createEncryptedPacket() {
+                    // 更新加密数据包计数
+                    packetCounter.encrypted++;
+                    document.getElementById('viz-encrypted-packets').textContent = packetCounter.encrypted;
+
+                    // 创建加密数据包 (加密服务器 -> 网关 -> 解密服务器)
+                    createPacket('domain-sender', 'packet-encrypted', 75, 100, () => {
+                        // 创建加密数据包穿过网关 (网关 -> 解密服务器)
+                        setTimeout(() => {
+                            createPacket('domain-receiver', 'packet-encrypted', 0, 25, () => {
+                                console.log("加密数据包动画完成");
+                            });
+                        }, 300);
+                    });
+                }
+
+                function createDecryptedPacket() {
+                    // 更新解密数据包计数
+                    packetCounter.decrypted++;
+                    document.getElementById('viz-decrypted-packets').textContent = packetCounter.decrypted;
+
+                    // 创建解密数据包 (解密服务器 -> 接收方)
+                    createPacket('domain-receiver', 'packet-decrypted', 25, 75, () => {
+                        // 传输完成
+                        packetCounter.success++;
+                        // 完成一个动画后减少计数
+                        pendingAnimations--;
+                        // 更新成功率
+                        const successRate = packetCounter.total > 0
+                            ? Math.round((packetCounter.success / packetCounter.total) * 100)
+                            : 100;
+                        document.getElementById('viz-success-rate').textContent = `${successRate}%`;
+
+                        console.log("解密数据包动画完成");
+                    });
+                }
+
+                function createPacket(domainId, packetClass, startPercent, endPercent, callback) {
+                    const domain = document.getElementById(domainId);
+                    if (!domain) {
+                        console.error(`找不到ID为 ${domainId} 的元素`);
+                        if (callback) callback();
+                        return;
+                    }
+
+                    const packet = document.createElement('div');
+                    packet.className = `data-packet ${packetClass}`;
+
+                    // 设置起始位置
+                    const domainRect = domain.getBoundingClientRect();
+                    const startX = domainRect.width * (startPercent / 100);
+                    packet.style.left = `${startX}px`;
+
+                    domain.appendChild(packet);
+
+                    // 动画移动到终点
+                    setTimeout(() => {
+                        const endX = domainRect.width * (endPercent / 100);
+                        packet.style.left = `${endX}px`;
+
+                        // 动画完成后回调
+                        setTimeout(() => {
+                            packet.remove();
+                            if (callback) callback();
+                        }, 500);
+                    }, 50);
+                }
+
+                function updateVisualizationStats() {
+                    // 此函数只更新可视化区域的统计数据，不再同步更新其他区域
+                    const successRate = packetCounter.total > 0
+                        ? Math.round((packetCounter.success / packetCounter.total) * 100)
+                        : 100;
+                    document.getElementById('viz-success-rate').textContent = `${successRate}%`;
+
+                    // 添加日志，帮助调试
+                    console.log(`数据包统计 - 总数: ${packetCounter.total}, 明文: ${packetCounter.plaintext}, 加密: ${packetCounter.encrypted}, 解密: ${packetCounter.decrypted}, 成功: ${packetCounter.success}`);
+                }
+
+                // 从API获取实时性能数据
+                function updatePerformanceData() {
+                    // 从API获取性能数据
+                    fetch('/performance')
+                        .then(response => {
+                            if (!response.ok) {
+                                return response.json().then(err => {
+                                    throw new Error(err.error || '请求失败');
+                                });
+                            }
+                            return response.json();
+                        })
+                        .then(data => {
+                            // 如果收到等待数据的状态，不执行更新
+                            if (data.status === "waiting_for_data") {
+                                console.log("等待性能数据...");
+                                return;
+                            }
+
+                            if (data.error) {
+                                throw new Error(data.error);
+                            }
+
+                            // 保存最新的性能数据用于服务器选择功能
+                            latestPerformanceData = data;
+
+                            // 更新吞吐率 (显示单位为Kbps)
+                            const throughputValue = document.getElementById('throughput-value');
+                            if (data.throughput && data.throughput.current !== null) {
+                                const newThroughput = data.throughput.current.toFixed(1);
+                                throughputValue.textContent = newThroughput;
+
+                                const throughputBar = document.getElementById('throughput-bar');
+                                // 最大吞吐量为150 Kbps
+                                const throughputPercent = (newThroughput / 500 * 100);
+                                throughputBar.style.width = `${Math.min(100, throughputPercent)}%`;
+
+                                // 更新吞吐率单位显示
+                                document.querySelector('.metric-unit').textContent = 'Kbps';
+                            } else {
+                                throughputValue.textContent = "0";
+                            }
+
+                            // 更新延迟
+                            const latencyValue = document.getElementById('latency-value');
+                            const minLatency = document.getElementById('min-latency');
+                            const maxLatency = document.getElementById('max-latency');
+                            const avgLatency = document.getElementById('avg-latency');
+
+                            if (data.latency && data.latency.current !== null) {
+                                latencyValue.textContent = data.latency.current.toFixed(2);
+
+                                // 更新最小/最大/平均延迟
+                                minLatency.textContent = data.latency.min.toFixed(2);
+                                maxLatency.textContent = data.latency.max.toFixed(2);
+                                avgLatency.textContent = data.latency.avg.toFixed(2);
+                            } else {
+                                latencyValue.textContent = "0";
+                                minLatency.textContent = "0";
+                                maxLatency.textContent = "0";
+                                avgLatency.textContent = "0";
+                            }
+
+                            // 更新加密处理时间
+                            const encryptTime = document.getElementById('encrypt-time');
+                            if (data.encrypt_time && data.encrypt_time.current !== null) {
+                                const newEncryptTime = data.encrypt_time.current.toFixed(2);
+                                encryptTime.textContent = newEncryptTime;
+
+                                const encryptTimeBar = document.getElementById('encrypt-time-bar');
+                                const encryptPercent = (newEncryptTime / 10 * 100); // 假设最大10ms
+                                encryptTimeBar.style.width = `${Math.min(100, encryptPercent)}%`;
+                            } else {
+                                encryptTime.textContent = "0";
+                            }
+
+                            // 更新解密处理时间
+                            const decryptTime = document.getElementById('decrypt-time');
+                            if (data.decrypt_time && data.decrypt_time.current !== null) {
+                                const newDecryptTime = data.decrypt_time.current.toFixed(2);
+                                decryptTime.textContent = newDecryptTime;
+
+                                const decryptTimeBar = document.getElementById('decrypt-time-bar');
+                                const decryptPercent = (newDecryptTime / 10 * 100); // 假设最大10ms
+                                decryptTimeBar.style.width = `${Math.min(100, decryptPercent)}%`;
+                            } else {
+                                decryptTime.textContent = "0";
+                            }
+
+                            // 根据当前选择的服务器更新CPU和内存使用率显示
+                            updateServerResourceDisplay();
+
+                            // 更新安全强度 - 基于真实性能指标
+                            const securityStrength = document.getElementById('security-strength');
+                            if (data.throughput && data.throughput.current !== null && data.latency && data.latency.current !== null) {
+                                // 基于真实的性能指标计算安全强度
+                                // 例如：吞吐量越高、延迟越低，安全强度评分越高
+                                const secScore = Math.min(99, Math.max(90,
+                                    95 + (data.throughput.current / 50) - (data.latency.current / 20)
+                                ));
+                                securityStrength.textContent = `${secScore.toFixed(1)}%`;
+                            } else {
+                                securityStrength.textContent = "N/A";
+                            }
+
+                            // 更新吞吐率波动 (根据历史吞吐率计算)
+                            const throughputFluctuation = document.getElementById('throughput-fluctuation');
+                            const throughputHistory = data.throughput?.history || [];
+                            if (throughputHistory && throughputHistory.length > 1) {
+                                const avg = throughputHistory.reduce((a, b) => a + b, 0) / throughputHistory.length;
+                                const deviation = Math.sqrt(throughputHistory.map(x => Math.pow(x - avg, 2)).reduce((a, b) => a + b, 0) / throughputHistory.length);
+                                const fluctuation = (deviation / avg * 100).toFixed(1);
+                                throughputFluctuation.textContent = `±${fluctuation}%`;
+                            } else {
+                                throughputFluctuation.textContent = "N/A";
+                            }
+
+                            // 更新性能图表
+                            if (window.performanceChart) {
+                                // 更新性能图表，只在有数据时更新
+                                if (data.throughput && data.throughput.history && data.throughput.history.length > 0) {
+                                    window.performanceChart.data.datasets[0].data = data.throughput.history;
+                                }
+                                if (data.latency && data.latency.history && data.latency.history.length > 0) {
+                                    window.performanceChart.data.datasets[1].data = data.latency.history;
+                                }
+                                window.performanceChart.update();
+                            }
+                        })
+                        .catch(error => {
+                            console.error('获取性能数据失败:', error);
+                            // 只在控制台输出错误信息，不在UI上显示
+                        });
+                }
+
+                // 初始化图表
+                function initializeCharts() {
+                    // 资源使用率图表
+                    const resourceCtx = document.getElementById('resource-chart').getContext('2d');
+                    window.resourceChart = new Chart(resourceCtx, {
+                        type: 'line',
+                        data: {
+                            labels: Array(20).fill(''),
+                            datasets: [
+                                {
+                                    label: '加密服务器 CPU 使用率', // 默认显示加密服务器CPU
+                                    data: [],  // 初始化为空数组
+                                    borderColor: '#cc00ff', // 加密服务器使用紫色
+                                    backgroundColor: 'rgba(204, 0, 255, 0.1)',
+                                    tension: 0.4,
+                                    fill: true,
+                                },
+                                {
+                                    label: '加密服务器内存使用率', // 默认显示加密服务器内存
+                                    data: [],  // 初始化为空数组
+                                    borderColor: '#00f7ff',
+                                    backgroundColor: 'rgba(0, 247, 255, 0.1)',
+                                    tension: 0.4,
+                                    fill: true,
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    max: 100,
+                                    grid: {
+                                        color: 'rgba(255, 255, 255, 0.1)'
+                                    },
+                                    ticks: {
+                                        color: 'rgba(0, 247, 255, 0.7)'
+                                    }
+                                },
+                                x: {
+                                    grid: {
+                                        display: false
+                                    },
+                                    ticks: {
+                                        display: false
+                                    }
+                                }
+                            },
+                            plugins: {
+                                legend: {
+                                    labels: {
+                                        color: 'rgba(0, 247, 255, 0.7)'
+                                    }
+                                }
+                            },
+                            animation: {
+                                duration: 0
+                            }
+                        }
+                    });
+
+                    // 性能监控图表 - 修改Y轴范围
+                    const performanceCtx = document.getElementById('performance-chart').getContext('2d');
+                    window.performanceChart = new Chart(performanceCtx, {
+                        type: 'line',
+                        data: {
+                            labels: Array(20).fill(''),
+                            datasets: [
+                                {
+                                    label: '吞吐率 (Kbps)',  // 修改单位为Kbps
+                                    data: [],  // 初始化为空数组
+                                    borderColor: '#00ff9d',
+                                    backgroundColor: 'rgba(0, 255, 157, 0.1)',
+                                    tension: 0.4,
+                                    fill: true,
+                                    yAxisID: 'y'
+                                },
+                                {
+                                    label: '延迟 (ms)',
+                                    data: [],  // 初始化为空数组
+                                    borderColor: '#cc00ff',
+                                    backgroundColor: 'transparent',
+                                    tension: 0.4,
+                                    borderDash: [5, 5],
+                                    fill: false,
+                                    yAxisID: 'y1'
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                y: {
+                                    // 对于吞吐率，使用适合Kbps的范围
+                                    beginAtZero: true,
+                                    min: 0,
+                                    max: 500,
+                                    position: 'left',
+                                    grid: {
+                                        color: 'rgba(255, 255, 255, 0.1)'
+                                    },
+                                    ticks: {
+                                        color: 'rgba(0, 255, 157, 0.7)'
+                                    },
+                                    title: {
+                                        display: true,
+                                        text: 'Kbps',
+                                        color: 'rgba(0, 255, 157, 0.7)'
+                                    }
+                                },
+                                y1: {
+                                    // 修改延迟的坐标范围为0-5
+                                    beginAtZero: true,
+                                    min: 0,
+                                    max: 20,
+                                    position: 'right',
+                                    grid: {
+                                        display: false
+                                    },
+                                    ticks: {
+                                        color: 'rgba(204, 0, 255, 0.7)'
+                                    },
+                                    title: {
+                                        display: true,
+                                        text: 'ms',
+                                        color: 'rgba(204, 0, 255, 0.7)'
+                                    }
+                                },
+                                x: {
+                                    grid: {
+                                        display: false
+                                    },
+                                    ticks: {
+                                        display: false
+                                    }
+                                }
+                            },
+                            plugins: {
+                                legend: {
+                                    labels: {
+                                        color: 'rgba(0, 247, 255, 0.7)'
+                                    }
+                                }
+                            },
+                            animation: {
+                                duration: 0
+                            }
+                        }
+                    });
+                }
+
+                // 初始化
+                // 重置所有状态
+                resetAllCounters();
+
+                // 初始化图表
+                initializeCharts();
+
+                // 定期更新数据
+                setInterval(() => {
+                    if (!transmissionInterval) {
+                        updatePerformanceData();
+                    }
+                }, 2000);  // 每2秒更新一次
+
+                // 初始化数据包可视化状态
+                updateVisualizationStats();
+
+                // 监听页面刷新或关闭事件
+                window.addEventListener('beforeunload', function () {
+                    // 清除所有计时器
+                    if (transmissionInterval) {
+                        clearInterval(transmissionInterval);
+                    }
+                });
+            });
+
+
+
+        </script>
+
+</body>
+
+</html>
