@@ -32,7 +32,7 @@
 | `/`                   | GET  | 主页面，展示加解密 & 性能数据       |
 | `/udp_encrypt`        | POST | 触发一次 UDP 加密测试          |
 | `/udp_decrypt`        | POST | 触发一次 UDP 解密测试          |
-| `/iperf_test`         | POST | 触发 iPerf³ 网络带宽/时延测试（新） |
+| `/iperf_test`         | POST | 触发 iPerf3 网络带宽/时延测试（新） |
 | `/query_remote_usage` | GET  | 抓取远端主机 CPU/内存使用数据      |
 
 ## 目录结构
@@ -101,10 +101,10 @@ sudo apt install -y clang llvm libelf-dev gcc-multilib build-essential linux-too
 
 将源代码文件复制到相应目录：
 
-   ```bash
-   git clone <repo_url> sm4-xdp
-   cd sm4-xdp
-   ```
+```bash
+git clone <repo_url> sm4-xdp
+cd sm4-xdp
+```
 
 ### 3. 编译
 
@@ -122,6 +122,12 @@ gcc -o src/kms_server src/kms/kms_server.c -lm
 chmod +x src/kms_server 
 ```
 
+或者直接使用编译脚本:
+```bash
+cd sm4-xdp
+./scripts/build.sh
+```
+
 #### B机 (加密节点):
 
 ```bash
@@ -135,6 +141,12 @@ gcc -o src/kms/encrypt_key_client src/kms/encrypt_key_client.c -lbpf
 
 # 设置可执行权限
 chmod +x src/kms/encrypt_key_client
+```
+
+或者直接使用编译脚本:
+```bash
+cd sm4-xdp
+./scripts/build.sh
 ```
 
 #### C机 (解密节点):
@@ -159,7 +171,6 @@ cd sm4-xdp
 ./scripts/build.sh
 ```
 
-
 ### 4. 部署和启动
 
 按照以下顺序启动各个组件：
@@ -171,7 +182,25 @@ cd sm4-xdp
 ./src/kms/kms_server -r
 ```
 
+输出应类似于：
+
+```
+Using fixed test key (use -r for random keys)
+Generated new key ID: 1
+Key: 01234567 89abcdef fedcba98 76543210
+...
+KMS server started on port 9000
+Waiting for clients...
+```
+
 此时 KMS 服务器将启动并在端口 9000 上监听，等待密钥客户端的连接。
+
+或者使用部署脚本:
+
+```bash
+cd ~/sm4-xdp
+sudo ./deploy.sh kms
+```
 
 #### 第二步：部署加密 XDP 程序 (B机)
 
@@ -186,7 +215,28 @@ sudo ip link set dev eth0 xdp off 2>/dev/null || true
 
 # 加载加密 XDP 程序
 sudo ip link set dev eth0 xdp obj obj/encrypt.o sec xdp verbose
+```
 
+或者使用部署脚本:
+
+```bash
+cd ~/sm4-xdp
+sudo ./deploy.sh encrypt eth0
+```
+
+输出应类似于：
+```
+正在部署加密XDP程序到接口 eth0...
+正在挂载BPF文件系统...
+XDP程序已加载到接口 eth0:
+...
+BPF Map已pin到 /sys/fs/bpf/sm4_key_encrypt/sm4_key_map
+加密XDP程序部署完成
+```
+
+#### 第三步：启动加密节点的密钥客户端 (B机)
+
+```bash
 # 确认程序已加载
 sudo bpftool prog show
 
@@ -202,7 +252,23 @@ sudo bpftool map pin id $MAP_ID /sys/fs/bpf/sm4_key_encrypt/sm4_key_map
 ./src/kms/encrypt_key_client 192.168.58.132 /sys/fs/bpf/sm4_key_encrypt/sm4_key_map 30
 ```
 
-#### 第三步：部署解密 XDP 程序 (C机)
+输出应类似于：
+```
+Starting SM4 key client
+Server: 192.168.58.132:9000
+BPF Map: /sys/fs/bpf/sm4_key_encrypt/sm4_key_map
+Poll interval: 30 seconds
+
+Requesting key from KMS server...
+Received key:
+Key ID: 1
+Key: 0x01234567 0x89abcdef 0xfedcba98 0x76543210
+...
+This is a new key (previous ID: 0)
+Successfully updated key in BPF map
+```
+
+#### 第四步：部署解密 XDP 程序 (C机)
 
 ```bash
 cd sm4-xdp
@@ -218,7 +284,36 @@ sudo ip link set dev eth0 xdp obj obj/decrypt.o sec xdp verbose
 
 # 确认程序已加载
 sudo bpftool prog show
+```
 
+或者使用部署脚本:
+
+```bash
+
+cd ~/sm4-xdp
+sudo ./deploy.sh decrypt eth0
+
+```
+
+输出应类似于：
+
+```bash
+
+正在部署解密XDP程序到接口 eth0...
+正在挂载BPF文件系统...
+XDP程序已加载到接口 eth0:
+...
+BPF Map已pin到 /sys/fs/bpf/sm4_key_decrypt/sm4_key_map
+解密XDP程序部署完成
+
+```
+
+#### 第五步：启动解密节点的密钥客户端  (C机)
+
+
+```bash
+
+cd sm4-xdp
 # 找到 Map ID
 MAP_ID=$(sudo bpftool map list | grep sm4_key_map | awk '{print $1}')
 echo "Map ID: $MAP_ID"
@@ -231,21 +326,20 @@ sudo bpftool map pin id $MAP_ID /sys/fs/bpf/sm4_key_decrypt/sm4_key_map
 ./src/kms/decrypt_key_client 192.168.58.132 /sys/fs/bpf/sm4_key_decrypt/sm4_key_map 30
 ```
 
+输出应类似于：
+```
+Starting SM4 key client
+Server: 192.168.58.132:9000
+BPF Map: /sys/fs/bpf/sm4_key_decrypt/sm4_key_map
+Poll interval: 30 seconds
 
-或者使用部署脚本:
-
-```bash
-# A机
-cd sm4-xdp
-./scripts/deploy.sh kms
-
-# B机
-cd sm4-xdp
-./scripts/deploy.sh encrypt eth0
-
-# C机
-cd sm4-xdp
-./scripts/deploy.sh decrypt eth0
+Requesting key from KMS server...
+Received key:
+Key ID: 1
+Key: 0x01234567 0x89abcdef 0xfedcba98 0x76543210
+...
+This is a new key (previous ID: 0)
+Successfully updated key in BPF map
 ```
 
 #### 第四步：启动 Flask Web 平台
