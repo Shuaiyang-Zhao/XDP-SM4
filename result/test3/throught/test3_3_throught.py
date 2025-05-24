@@ -1,3 +1,4 @@
+
 import math 
 import numpy as np
 import matplotlib
@@ -7,7 +8,7 @@ import os
 import shutil
 
 # ——— 输出目录 ———
-output_dir = "./sm4/img/test3"
+output_dir = "./result/test3/throught/"
 os.makedirs(output_dir, exist_ok=True)
 
 # ——— 重置 & 清除 matplotlib 缓存 ———
@@ -40,6 +41,7 @@ payload_len = np.array([16, 32, 64, 128, 256, 512, 1024, 1472])
 # 吞吐量数据 (Mbps)
 xdp_tp = np.array([5.78, 11.37, 22.29, 43.34, 71.79, 122.93, 241.70, 310.29])
 usr_tp = np.array([4.67, 9.05, 17.45, 32.88, 53.96, 92.25, 124.01, 136.23])
+
 
 # ——— 将 payload 映射到 sqrt 空间，便于可视化非等距 ———
 x_pos = np.sqrt(payload_len)

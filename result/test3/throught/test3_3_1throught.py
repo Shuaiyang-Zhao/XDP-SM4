@@ -38,8 +38,11 @@ except:
 payload_len = np.array([16, 32, 64, 128, 256, 512, 1024, 1472])
 
 # 吞吐量数据 (Mbps)
-xdp_tp = np.array([5.78, 11.37, 22.29, 43.34, 71.79, 122.93, 241.70, 310.29])
-usr_tp = np.array([4.67, 9.05, 17.45, 32.88, 53.96, 92.25, 124.01, 136.23])
+# xdp_tp = np.array([5.78, 11.37, 22.29, 43.34, 71.79, 122.93, 241.70, 310.29])
+# usr_tp = np.array([4.67, 9.05, 17.45, 32.88, 53.96, 92.25, 124.01, 136.23])
+
+xdp_tp = np.array([16.7, 31.4, 66.9, 134, 262, 488, 929, 1413.12 ])
+usr_tp = np.array([2.49, 4.70, 9.85, 18.6, 33.3, 53.5, 83.6, 86.5])
 
 # ——— 计算“sqrt 坐标” ———
 x_pos = np.sqrt(payload_len)
@@ -71,7 +74,7 @@ plt.legend(fontsize=10)
 plt.tight_layout()
 
 # 保存图像
-plt.savefig(os.path.join(output_dir, "throughput_vs_payload.png"), dpi=300)
+plt.savefig(os.path.join(output_dir, "throughput_vs_payload_new.png"), dpi=300)
 plt.close()
 
-print(f"图已保存到 {os.path.join(output_dir, 'throughput_vs_payload.png')}")
+print(f"图已保存到 {os.path.join(output_dir, 'throughput_vs_payload_new.png')}")

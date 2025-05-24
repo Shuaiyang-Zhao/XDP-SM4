@@ -3,6 +3,7 @@
         "*.cjson": "jsonc",
         "*.wxss": "css",
         "*.wxs": "javascript",
-        "stat.h": "c"
+        "stat.h": "c",
+        "string.h": "c"
     }
 }

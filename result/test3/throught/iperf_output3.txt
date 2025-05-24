@@ -1,0 +1,121 @@
+Connecting to host 192.168.58.128, port 1240
+[  5] local 192.168.58.129 port 33849 connected to 192.168.58.128 port 1240
+[ ID] Interval           Transfer     Bitrate         Total Datagrams
+[  5]   0.00-10.00  sec  5.76 MBytes  4.83 Mbits/sec  377560  
+[  5]  10.00-20.00  sec  6.13 MBytes  5.14 Mbits/sec  401680  
+[  5]  20.00-30.00  sec  6.13 MBytes  5.14 Mbits/sec  401820  
+[  5]  30.00-40.00  sec  6.06 MBytes  5.09 Mbits/sec  397370  
+[  5]  40.00-50.00  sec  6.10 MBytes  5.12 Mbits/sec  399940  
+[  5]  50.00-60.00  sec  6.06 MBytes  5.08 Mbits/sec  396980  
+- - - - - - - - - - - - - - - - - - - - - - - - -
+[ ID] Interval           Transfer     Bitrate         Jitter    Lost/Total Datagrams
+[  5]   0.00-60.00  sec  36.2 MBytes  5.07 Mbits/sec  0.000 ms  0/2375350 (0%)  sender
+[  5]   0.00-60.05  sec  17.8 MBytes  2.49 Mbits/sec  0.029 ms  1205804/2375341 (51%)  receiver
+
+iperf Done.
+Connecting to host 192.168.58.128, port 1240
+[  5] local 192.168.58.129 port 40823 connected to 192.168.58.128 port 1240
+[ ID] Interval           Transfer     Bitrate         Total Datagrams
+[  5]   0.00-10.00  sec  12.0 MBytes  10.1 Mbits/sec  393230  
+[  5]  10.00-20.00  sec  12.1 MBytes  10.2 Mbits/sec  397820  
+[  5]  20.00-30.00  sec  11.9 MBytes  10.0 Mbits/sec  391510  
+[  5]  30.00-40.00  sec  12.0 MBytes  10.1 Mbits/sec  394570  
+[  5]  40.00-50.00  sec  10.2 MBytes  8.59 Mbits/sec  335770  
+[  5]  50.00-60.00  sec  9.76 MBytes  8.19 Mbits/sec  319680  
+- - - - - - - - - - - - - - - - - - - - - - - - -
+[ ID] Interval           Transfer     Bitrate         Jitter    Lost/Total Datagrams
+[  5]   0.00-60.00  sec  68.1 MBytes  9.53 Mbits/sec  0.000 ms  0/2232580 (0%)  sender
+[  5]   0.00-60.04  sec  33.7 MBytes  4.70 Mbits/sec  0.060 ms  1129740/2232568 (51%)  receiver
+
+iperf Done.
+Connecting to host 192.168.58.128, port 1240
+[  5] local 192.168.58.129 port 52238 connected to 192.168.58.128 port 1240
+[ ID] Interval           Transfer     Bitrate         Total Datagrams
+[  5]   0.00-10.00  sec  24.3 MBytes  20.4 Mbits/sec  398910  
+[  5]  10.00-20.00  sec  24.3 MBytes  20.4 Mbits/sec  397570  
+[  5]  20.00-30.00  sec  24.2 MBytes  20.3 Mbits/sec  397200  
+[  5]  30.00-40.00  sec  23.9 MBytes  20.1 Mbits/sec  392180  
+[  5]  40.00-50.00  sec  24.0 MBytes  20.2 Mbits/sec  393630  
+[  5]  50.00-60.00  sec  24.2 MBytes  20.3 Mbits/sec  396230  
+- - - - - - - - - - - - - - - - - - - - - - - - -
+[ ID] Interval           Transfer     Bitrate         Jitter    Lost/Total Datagrams
+[  5]   0.00-60.00  sec   145 MBytes  20.3 Mbits/sec  0.000 ms  0/2375720 (0%)  sender
+[  5]   0.00-60.04  sec  70.5 MBytes  9.85 Mbits/sec  0.075 ms  1220254/2375714 (51%)  receiver
+
+iperf Done.
+Connecting to host 192.168.58.128, port 1240
+[  5] local 192.168.58.129 port 40475 connected to 192.168.58.128 port 1240
+[ ID] Interval           Transfer     Bitrate         Total Datagrams
+[  5]   0.00-10.00  sec  56.4 MBytes  47.3 Mbits/sec  462000  
+[  5]  10.00-20.00  sec  55.6 MBytes  46.6 Mbits/sec  455600  
+[  5]  20.00-30.00  sec  53.6 MBytes  45.0 Mbits/sec  439110  
+[  5]  30.00-40.00  sec  53.5 MBytes  44.8 Mbits/sec  437930  
+[  5]  40.00-50.00  sec  54.6 MBytes  45.8 Mbits/sec  447040  
+[  5]  50.00-60.00  sec  38.9 MBytes  32.6 Mbits/sec  318770  
+- - - - - - - - - - - - - - - - - - - - - - - - -
+[ ID] Interval           Transfer     Bitrate         Jitter    Lost/Total Datagrams
+[  5]   0.00-60.00  sec   313 MBytes  43.7 Mbits/sec  0.000 ms  0/2560450 (0%)  sender
+[  5]   0.00-60.05  sec   133 MBytes  18.6 Mbits/sec  0.050 ms  1467465/2560433 (57%)  receiver
+
+iperf Done.
+Connecting to host 192.168.58.128, port 1240
+Connecting to host 192.168.58.128, port 1240
+[  5] local 192.168.58.129 port 57897 connected to 192.168.58.128 port 1240
+[ ID] Interval           Transfer     Bitrate         Total Datagrams
+[  5]   0.00-10.00  sec   123 MBytes   103 Mbits/sec  503710  
+[  5]  10.00-20.00  sec   129 MBytes   108 Mbits/sec  527190  
+[  5]  20.00-30.00  sec   146 MBytes   123 Mbits/sec  598480  
+[  5]  30.00-40.00  sec   122 MBytes   102 Mbits/sec  498180  
+[  5]  40.00-50.00  sec   148 MBytes   124 Mbits/sec  607190  
+[  5]  50.00-60.00  sec   145 MBytes   122 Mbits/sec  595790  
+- - - - - - - - - - - - - - - - - - - - - - - - -
+[ ID] Interval           Transfer     Bitrate         Jitter    Lost/Total Datagrams
+[  5]   0.00-60.00  sec   813 MBytes   114 Mbits/sec  0.000 ms  0/3330540 (0%)  sender
+[  5]   0.00-60.05  sec   239 MBytes  33.3 Mbits/sec  0.051 ms  2353516/3330507 (71%)  receiver
+
+iperf Done.
+Connecting to host 192.168.58.128, port 1240
+[  5] local 192.168.58.129 port 59086 connected to 192.168.58.128 port 1240
+[ ID] Interval           Transfer     Bitrate         Total Datagrams
+[  5]   0.00-10.00  sec   313 MBytes   262 Mbits/sec  640740  
+[  5]  10.00-20.00  sec   366 MBytes   307 Mbits/sec  749040  
+[  5]  20.00-30.00  sec   372 MBytes   312 Mbits/sec  761290  
+[  5]  30.00-40.00  sec   373 MBytes   313 Mbits/sec  764550  
+[  5]  40.00-50.00  sec   307 MBytes   257 Mbits/sec  627980  
+[  5]  50.00-60.00  sec   288 MBytes   241 Mbits/sec  588970  
+- - - - - - - - - - - - - - - - - - - - - - - - -
+[ ID] Interval           Transfer     Bitrate         Jitter    Lost/Total Datagrams
+[  5]   0.00-60.00  sec  1.97 GBytes   282 Mbits/sec  0.000 ms  0/4132570 (0%)  sender
+[  5]   0.00-60.05  sec   383 MBytes  53.5 Mbits/sec  0.061 ms  3347620/4132567 (81%)  receiver
+
+iperf Done.
+Connecting to host 192.168.58.128, port 1240
+[  5] local 192.168.58.129 port 56387 connected to 192.168.58.128 port 1240
+[ ID] Interval           Transfer     Bitrate         Total Datagrams
+[  5]   0.00-10.00  sec   719 MBytes   603 Mbits/sec  736230  
+[  5]  10.00-20.00  sec   737 MBytes   618 Mbits/sec  754490  
+[  5]  20.00-30.00  sec   714 MBytes   599 Mbits/sec  730840  
+[  5]  30.00-40.00  sec   722 MBytes   606 Mbits/sec  739460  
+[  5]  40.00-50.00  sec   723 MBytes   607 Mbits/sec  740810  
+[  5]  50.00-60.00  sec   718 MBytes   602 Mbits/sec  735430  
+- - - - - - - - - - - - - - - - - - - - - - - - -
+[ ID] Interval           Transfer     Bitrate         Jitter    Lost/Total Datagrams
+[  5]   0.00-60.00  sec  4.23 GBytes   606 Mbits/sec  0.000 ms  0/4437260 (0%)  sender
+[  5]   0.00-60.05  sec   599 MBytes  83.6 Mbits/sec  0.137 ms  3824236/4437111 (86%)  receiver
+
+iperf Done.
+Connecting to host 192.168.58.128, port 1240
+[  5] local 192.168.58.129 port 34377 connected to 192.168.58.128 port 1240
+[ ID] Interval           Transfer     Bitrate         Total Datagrams
+[  5]   0.00-10.00  sec  1.21 GBytes  1.04 Gbits/sec  882100  
+[  5]  10.00-20.00  sec  1.23 GBytes  1.06 Gbits/sec  899500  
+[  5]  20.00-30.00  sec  1.24 GBytes  1.06 Gbits/sec  901180  
+[  5]  30.00-40.00  sec  1.23 GBytes  1.06 Gbits/sec  896760  
+[  5]  40.00-50.00  sec  1.22 GBytes  1.05 Gbits/sec  890870  
+[  5]  50.00-60.00  sec  1.12 GBytes   961 Mbits/sec  816020  
+- - - - - - - - - - - - - - - - - - - - - - - - -
+[ ID] Interval           Transfer     Bitrate         Jitter    Lost/Total Datagrams
+[  5]   0.00-60.00  sec  7.25 GBytes  1.04 Gbits/sec  0.000 ms  0/5286430 (0%)  sender
+[  5]   0.00-60.05  sec   526 MBytes  73.5 Mbits/sec  0.179 ms  4911830/5286428 (93%)  receiver
+
+iperf Done.
