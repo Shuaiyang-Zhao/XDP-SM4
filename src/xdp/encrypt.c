@@ -184,6 +184,7 @@ static __always_inline u16 udp_checksum(struct iphdr *ip, struct udphdr *udp, vo
     if ((void *)(payload_start + payload_len) > data_end)
         return 0;
 
+    // 伪首部校验和
     u32 csum = 0;
 
     csum += (ip->saddr >> 16) & 0xffff;
@@ -215,6 +216,7 @@ static __always_inline u16 udp_checksum(struct iphdr *ip, struct udphdr *udp, vo
         count += 2;
     }
 
+    // 处理奇数个字节的情况
     if (count < payload_len)
     {
         void *pos = (void *)(payload_start + count);

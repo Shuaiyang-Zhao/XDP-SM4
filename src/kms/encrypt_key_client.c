@@ -139,6 +139,13 @@ int create_new_bpf_map(const char *map_path) {
     }
     
     // 创建BPF Map
+    /*
+    BPF_MAP_TYPE_ARRAY：表示创建一个数组类型的 Map。
+    sizeof(uint32_t)：key 大小为 4 字节。
+    sizeof(struct sm4_key)：value 大小为 struct sm4_key 结构体大小。    
+    1：Map 只包含一个元素（索引0）。
+    0：标志，一般是 0。
+    */
     int map_fd = bpf_create_map(BPF_MAP_TYPE_ARRAY, sizeof(uint32_t), sizeof(struct sm4_key), 1, 0);
     if (map_fd < 0) {
         printf("Failed to create BPF map, error: %s\n", strerror(errno));
@@ -147,7 +154,7 @@ int create_new_bpf_map(const char *map_path) {
     
     printf("Map created successfully, fd = %d\n", map_fd);
     
-    // Pin BPF Map到文件系统
+    // Pin BPF Map到文件系统  bpf_obj_pin
     printf("Pinning map to: %s\n", map_path);
     if (bpf_obj_pin(map_fd, map_path) < 0) {
         printf("Failed to pin BPF map, error: %s\n", strerror(errno));
@@ -176,7 +183,7 @@ int ensure_bpf_map_exists(const char *map_path) {
     return create_new_bpf_map(map_path);
 }
 
-// 更新Pin路径的BPF Map
+// 更新BPF Map
 int update_bpf_map_key(const char *map_path, struct sm4_key_payload *key_data) {
     // 确保map存在
     printf("Trying to access BPF map at: %s\n", map_path);

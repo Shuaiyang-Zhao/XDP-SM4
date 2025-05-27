@@ -48,6 +48,7 @@ void generate_test_key(uint32_t key[4]) {
 
 // 生成随机密钥(实际生产环境使用)
 void generate_random_key(uint32_t key[4]) {
+    // Linux 系统随机设备 /dev/urandom，用于获取高质量的伪随机数
     int urandom_fd = open("/dev/urandom", O_RDONLY);
     if (urandom_fd < 0) {
         perror("Failed to open /dev/urandom");
@@ -86,6 +87,15 @@ void create_new_key(struct sm4_key_payload *key_data, int use_fixed_key) {
     printf("Timestamp: %s", ctime((time_t*)&key_data->timestamp));
     printf("Expiration: %s", ctime((time_t*)&key_data->expiration));
 }
+
+/**
+struct sockaddr_in {
+    sa_family_t    sin_family; // 地址族，AF_INET表示IPv4
+    in_port_t      sin_port;   // 端口号（网络字节序）
+    struct in_addr sin_addr;   // IP地址（网络字节序）
+    char           sin_zero[8];// 填充用，保证结构体大小与sockaddr相同
+};
+ */
 
 // 主服务器程序
 int main(int argc, char **argv) {
@@ -174,6 +184,14 @@ int main(int argc, char **argv) {
         timeout.tv_sec = 1;
         timeout.tv_usec = 0;
         
+        /*
+        监听多个文件描述符（本例中只有 server_socket）是否准备好进行 I/O 操作：
+        第一个参数：监听的最大文件描述符值 + 1；
+        第二个参数：关心“可读”的 socket；
+        第三/四个参数设为 NULL，不关心“可写”和“异常”；
+        第五个参数：超时时间（1 秒）；
+        */
+
         int activity = select(server_socket + 1, &read_fds, NULL, NULL, &timeout);
         
         if (activity < 0) {
@@ -204,7 +222,7 @@ int main(int argc, char **argv) {
             }
             
             char client_ip[INET_ADDRSTRLEN];
-            inet_ntop(AF_INET, &(client_addr.sin_addr), client_ip, INET_ADDRSTRLEN);
+            inet_ntop(AF_INET, &(client_addr.sin_addr), client_ip, INET_ADDRSTRLEN);//二进制转字符串
             printf("New connection from %s:%d\n", client_ip, ntohs(client_addr.sin_port));
             
             // 发送当前密钥给客户端
@@ -226,20 +244,4 @@ int main(int argc, char **argv) {
     return 0;
 }
 
-// 从系统熵池生成高质量随机密钥
-void generate_random_key(uint32_t key[4]) {
-    int urandom_fd = open("/dev/urandom", O_RDONLY);
-    if (urandom_fd < 0) {
-        perror("Failed to open /dev/urandom");
-        exit(1);
-    }
-    
-    // 读取128位随机数作为密钥
-    ssize_t bytes_read = read(urandom_fd, key, 16);
-    if (bytes_read != 16) {
-        perror("Failed to read random data");
-        exit(1);
-    }
-    
-    close(urandom_fd);
-}
+
