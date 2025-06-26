@@ -81,14 +81,6 @@
 
 ### 1. 准备工作
 
-在所有机器上创建项目目录：
-
-```bash
-# 创建项目目录结构
-mkdir -p sm4-xdp/{src,scripts,test,result}
-cd sm4-xdp
-```
-
 安装依赖项：
 
 ```bash
