@@ -1,4 +1,4 @@
-# SM4-XDP 加解密演示系统
+# XDP-SM4 加解密演示系统
 
 本项目是基于 XDP（eXpress Data Path）的 SM4 加解密演示系统，可实现高性能的网络数据包加密和解密。
 
@@ -101,7 +101,7 @@ https://github.com/Shuaiyang-Zhao/XDP-SM4
 #### A机 (KMS服务器和flask客户端):
 
 ```bash
-cd sm4-xdp
+cd XDP-SM4
 
 # 编译 KMS 服务器
 gcc -o src/kms_server src/kms/kms_server.c -lm
@@ -112,14 +112,14 @@ chmod +x src/kms_server
 <!-- 
 或者直接使用编译脚本:(文档结构改变，部署脚本暂未更新)
 ```bash
-cd sm4-xdp
+cd XDP-SM4
 ./scripts/build.sh
 ``` -->
 
 #### B机 (加密节点):
 
 ```bash
-cd sm4-xdp
+cd XDP-SM4
 
 # 编译加密 XDP 程序
 clang -O2 -g -Wall -target bpf -c src/xdp/encrypt.c -o src/xdp/encrypt.o
@@ -133,14 +133,14 @@ chmod +x src/kms/encrypt_key_client
 
 <!-- 或者直接使用编译脚本:(文档结构改变，部署脚本暂未更新)
 ```bash
-cd sm4-xdp
+cd XDP-SM4
 ./scripts/build.sh
 ``` -->
 
 #### C机 (解密节点):
 
 ```bash
-cd sm4-xdp
+cd XDP-SM4
 
 # 编译解密 XDP 程序
 clang -O2 -g -Wall -target bpf -c src/xdp/decrypt.c -o src/xdp/decrypt.o
@@ -155,7 +155,7 @@ chmod +x bin/decrypt_key_client
 <!-- 或者直接使用编译脚本:(文档结构改变，部署脚本暂未更新)
 
 ```bash
-cd sm4-xdp
+cd XDP-SM4
 ./scripts/build.sh
 ``` -->
 
@@ -166,7 +166,7 @@ cd sm4-xdp
 #### 第一步：启动 KMS 服务器 (A机)
 
 ```bash
-cd sm4-xdp
+
 ./src/kms/kms_server -r （-r 随机生成密钥）
 ```
 
@@ -186,7 +186,6 @@ Waiting for clients...
 或者使用部署脚本:（把deploy.sh放在kms_server同一目录）
 
 ```bash
-cd ~/sm4-xdp
 cp ./scripts/deploy.sh ./src/kms/
 sudo ./deploy.sh kms
 ```
@@ -194,7 +193,6 @@ sudo ./deploy.sh kms
 #### 第二步：部署加密 XDP 程序 (B机)
 
 ```bash
-cd sm4-xdp
 
 # 确保 BPF 文件系统已挂载
 sudo mount -t bpf bpf /sys/fs/bpf/
@@ -209,7 +207,6 @@ sudo ip link set dev eth0 xdp obj obj/encrypt.o sec xdp verbose
 或者使用部署脚本:（把deploy.sh放在encrypt.c同一目录）
 
 ```bash
-cd ~/sm4-xdp
 cp ./scripts/deploy.sh ./src/xdp/
 sudo ./deploy.sh encrypt eth0
 ```
@@ -261,7 +258,7 @@ Successfully updated key in BPF map
 #### 第四步：部署解密 XDP 程序 (C机)
 
 ```bash
-cd sm4-xdp
+cd XDP-SM4
 
 # 确保 BPF 文件系统已挂载
 sudo mount -t bpf bpf /sys/fs/bpf/
@@ -279,8 +276,6 @@ sudo bpftool prog show
 或者使用部署脚本:（把deploy.sh放在decrypt.c同一目录）
 
 ```bash
-
-cd ~/sm4-xdp
 cp ./scripts/deploy.sh ./src/xdp/
 sudo ./deploy.sh decrypt eth0
 
@@ -304,7 +299,7 @@ BPF Map已pin到 /sys/fs/bpf/sm4_key_decrypt/sm4_key_map
 
 ```bash
 
-cd sm4-xdp
+cd XDP-SM4
 # 找到 Map ID
 MAP_ID=$(sudo bpftool map list | grep sm4_key_map | awk '{print $1}')
 echo "Map ID: $MAP_ID"
@@ -346,7 +341,7 @@ FLASK_APP=app.py flask run --host=0.0.0.0 --port=5000
 确保 A、B、C 三台机器上的所有组件都已启动后，在 A 机上运行测试客户端进行测试：
 
 ```bash
-cd sm4-xdp
+cd XDP-SM4
 bash ./scripts/test.sh
 ```
 
@@ -360,7 +355,7 @@ bash ./scripts/test.sh
 也可以使用自动化测试脚本：
 
 ```bash
-cd sm4-xdp
+cd XDP-SM4
 bash ./scripts/auto_test.sh
 ```
 
@@ -370,15 +365,15 @@ bash ./scripts/auto_test.sh
 
 ```bash
 # A机
-cd sm4-xdp
+cd XDP-SM4
 ./scripts/cleanup.sh kms
 
 # B机
-cd sm4-xdp
+cd XDP-SM4
 ./scripts/cleanup.sh encrypt eth0
 
 # C机
-cd sm4-xdp
+cd XDP-SM4
 ./scripts/cleanup.sh decrypt eth0
 ``` -->
 
