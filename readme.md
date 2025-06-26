@@ -1,21 +1,21 @@
-# SM4-XDP 加解密系统
+# SM4-XDP 加解密演示系统
 
-这是一个基于 XDP（eXpress Data Path）的 SM4 加解密系统，可实现高性能的网络数据包加密和解密。系统集成 KMS 密钥管理、UDP 完整链路测试，以及 iPerf3 性能测试接口。
+本项目是基于 XDP（eXpress Data Path）的 SM4 加解密演示系统，可实现高性能的网络数据包加密和解密。
 
 
 ## 系统架构
 
-系统由三部分组成：
+系统部署在三台虚拟机上：
 
-1. **A机** (192.168.58.132): KMS 密钥管理服务器和测试客户端
+1. **A机** (192.168.58.132): 密钥管理服务器和测试客户端
 2. **B机** (192.168.58.129): 部署加密 XDP 程序
 3. **C机** (192.168.58.128): 部署解密 XDP 程序
 
 工作流程：
-- A机向B机发送UDP数据包，由B机的XDP程序进行加密并返回
-- A机将加密后的数据发送到C机，由C机的XDP程序进行解密并返回
+- A机向B机发送UDP数据包，由B机的XDP程序进行加密并采用XDP_TX返回
+- A机将加密后的数据发送到C机，由C机的XDP程序进行解密并采用XDP_TX返回
 - A机接收解密结果，验证加解密流程的正确性
-- 如果满足条件，也可以采用多台机器部署，A机和B机分别作为消息的发送方和接收方，C机和D机分别作为加密服务器和解密服务器，E机作为KMS服务器。
+- 如果满足条件，也可以采用多台机器部署，加密服务器和解密服务器之间改为XDP_REDIRECT传递消息。
 
 ## 环境要求
 
@@ -39,12 +39,12 @@
 
 ```
 ├── .vscode/                        # VSCode 配置
-├── docs/                           # 设计文档、论文草稿等
+├── docs/                           # 毕设文档
 ├── src/
 │   ├── xdp/                        # XDP eBPF 程序
 │   │   ├── encrypt.c
 │   │   └── decrypt.c
-│   ├── kms/                        # KMS 密钥客户端与服务端
+│   ├── kms/                        # 密钥客户端与服务端
 │   │   ├── encrypt_key_client.c
 │   │   ├── decrypt_key_client.c
 │   │   └── kms_server.c
@@ -64,15 +64,15 @@
 │   ├── auto_test.sh
 │   └── cleanup.sh
 ├── test/                           # 历史版本 & 单元/集成测试代码
-│   ├── update1/                    # 负载部分只有加密数据 
-│   ├── update2/                    # 负载部分有加密数据和辅助测试的数据 
+│   ├── update1/                    # 负载部分只有数据 
+│   ├── update2/                    # 负载部分（数据+辅助性能测量的数据） 
 │   ├── test_udp/                   # 测试UDP通信
 │   ├── test_en_de/                 # 测试加解密流程
-│   └── test_performance/
+│   └── test_performance/         
 └── result/                         # 对应./test/test_performance/
-    ├── test1/                      # 对应a1
-    ├── test2/                      # 对应a2
-    └── test3/                      # 对应a3
+    ├── a1/                     
+    ├── a2/                      
+    └── a3/                      
 
 ```
 
@@ -99,18 +99,14 @@ sudo apt install -y clang llvm libelf-dev gcc-multilib build-essential linux-too
 
 ### 2. 获取源代码
 
-将源代码文件复制到相应目录：
+https://github.com/Shuaiyang-Zhao/XDP-SM4   
 
-```bash
-git clone <repo_url> sm4-xdp
-cd sm4-xdp
-```
-
+ 
 ### 3. 编译
 
 根据机器角色编译相应组件：
 
-#### A机 (KMS服务器和测试客户端):
+#### A机 (KMS服务器和flask客户端):
 
 ```bash
 cd sm4-xdp
@@ -121,12 +117,12 @@ gcc -o src/kms_server src/kms/kms_server.c -lm
 # 设置可执行权限
 chmod +x src/kms_server 
 ```
-
-或者直接使用编译脚本:
+<!-- 
+或者直接使用编译脚本:(文档结构改变，部署脚本暂未更新)
 ```bash
 cd sm4-xdp
 ./scripts/build.sh
-```
+``` -->
 
 #### B机 (加密节点):
 
@@ -143,11 +139,11 @@ gcc -o src/kms/encrypt_key_client src/kms/encrypt_key_client.c -lbpf
 chmod +x src/kms/encrypt_key_client
 ```
 
-或者直接使用编译脚本:
+<!-- 或者直接使用编译脚本:(文档结构改变，部署脚本暂未更新)
 ```bash
 cd sm4-xdp
 ./scripts/build.sh
-```
+``` -->
 
 #### C机 (解密节点):
 
@@ -164,12 +160,12 @@ gcc -o src/kms/decrypt_key_client src/kms/decrypt_key_client.c -lbpf
 chmod +x bin/decrypt_key_client
 ```
 
-或者直接使用编译脚本:
+<!-- 或者直接使用编译脚本:(文档结构改变，部署脚本暂未更新)
 
 ```bash
 cd sm4-xdp
 ./scripts/build.sh
-```
+``` -->
 
 ### 4. 部署和启动
 
@@ -179,7 +175,7 @@ cd sm4-xdp
 
 ```bash
 cd sm4-xdp
-./src/kms/kms_server -r
+./src/kms/kms_server -r （-r 随机生成密钥）
 ```
 
 输出应类似于：
@@ -195,10 +191,11 @@ Waiting for clients...
 
 此时 KMS 服务器将启动并在端口 9000 上监听，等待密钥客户端的连接。
 
-或者使用部署脚本:
+或者使用部署脚本:（把deploy.sh放在kms_server同一目录）
 
 ```bash
 cd ~/sm4-xdp
+cp ./scripts/deploy.sh ./src/kms/
 sudo ./deploy.sh kms
 ```
 
@@ -217,10 +214,11 @@ sudo ip link set dev eth0 xdp off 2>/dev/null || true
 sudo ip link set dev eth0 xdp obj obj/encrypt.o sec xdp verbose
 ```
 
-或者使用部署脚本:
+或者使用部署脚本:（把deploy.sh放在encrypt.c同一目录）
 
 ```bash
 cd ~/sm4-xdp
+cp ./scripts/deploy.sh ./src/xdp/
 sudo ./deploy.sh encrypt eth0
 ```
 
@@ -286,11 +284,12 @@ sudo ip link set dev eth0 xdp obj obj/decrypt.o sec xdp verbose
 sudo bpftool prog show
 ```
 
-或者使用部署脚本:
+或者使用部署脚本:（把deploy.sh放在decrypt.c同一目录）
 
 ```bash
 
 cd ~/sm4-xdp
+cp ./scripts/deploy.sh ./src/xdp/
 sudo ./deploy.sh decrypt eth0
 
 ```
@@ -343,11 +342,12 @@ Successfully updated key in BPF map
 ```
 
 #### 第四步：启动 Flask Web 平台
+该flask_app需要在Pycharm（Professional Edition）中运行。学生优惠免费使用一年或者购买专业版。
    
-```bash
+<!-- ```bash
 cd src/flask_app
 FLASK_APP=app.py flask run --host=0.0.0.0 --port=5000
-```
+``` -->
 
 ### 5. 测试系统
 

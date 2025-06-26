@@ -187,7 +187,7 @@ def encrypt(plain_str: str):
         performance_data['encrypt_time_history'].append(proc * 1000)
         performance_data['packet_sizes'].append(len(raw))
 
-    # 在完成加密处理后，启动线程查询加密服务器资源
+    # 启动线程查询加密服务器资源
     if PERFORMANCE_MONITOR:
         thread = threading.Thread(target=sync_query_usage, args=(ENCRYPT_IP, True))
         thread.daemon = True

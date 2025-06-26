@@ -895,7 +895,8 @@
 
                                     // 更新UI和数据流动（与send-btn的函数相似）
                                     packetCount.textContent = (parseInt(packetCount.textContent) + 1).toString();
-
+                                    
+                                    encryptInput.textContent = '';
                                     // 显示加密解密结果 - 显示过程应该反映实际的数据流动
                                     typedOutput(encryptInput, hexInput, () => {
                                         // 更新数据包可视化 - 发送方到加密服务器的明文数据包
@@ -1049,7 +1050,7 @@
                 // 处理单个数据包发送
                 sendBtn.addEventListener('click', () => {
                     const hexInput = senderInput.value.trim();
-
+                    encryptInput.textContent = '';
                     // Update sender status
                     senderStatus.textContent = '发送中...';
 
