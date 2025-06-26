@@ -349,7 +349,7 @@ cd src/flask_app
 FLASK_APP=app.py flask run --host=0.0.0.0 --port=5000
 ``` -->
 
-### 5. 测试系统
+<!-- ### 5. 测试系统
 
 确保 A、B、C 三台机器上的所有组件都已启动后，在 A 机上运行测试客户端进行测试：
 
@@ -388,7 +388,7 @@ cd sm4-xdp
 # C机
 cd sm4-xdp
 ./scripts/cleanup.sh decrypt eth0
-```
+``` -->
 
 ## 注意事项
 
